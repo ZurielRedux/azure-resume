@@ -5,19 +5,25 @@ import json
 app = func.FunctionApp()
 
 @app.function_name(name="cosmos_db_reader")
-@app.route(route="http_trigger", auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="GetResumeCounter", auth_level=func.AuthLevel.ANONYMOUS)
 @app.cosmos_db_input(arg_name="documents", 
                      database_name="AzureResume",
                      container_name="Counter", 
-                     #id="1", 
                      connection="CosmosDbConnectionSetting"
-)
+                     )
+@app.cosmos_db_output(arg_name="outDocument",
+                      database_name="AzureResume",
+                      container_name="Counter",
+                      connection="CosmosDbConnectionSetting"
+                      )
 
-def cosmos_db_reader(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
-    document = str(documents[0]["count"]+1)
-    logging.info(document)
+def cosmos_db_reader(req: func.HttpRequest, documents: func.DocumentList, outDocument: func.Out[func.Document]) -> func.HttpResponse:
+    newdocument = documents[0]
+    newdocument["count"] = newdocument.get('count',0) + 1
+    outDocument.set(newdocument)
+    logging.info(f' {newdocument.get("count",0)}')
     return func.HttpResponse(
-        document,
-        status_code=200
+        body=json.dumps({"count": newdocument.get("count",0)}),
+        status_code=200,
+        headers={"Content-Type": "application/json"}
     )
-    
